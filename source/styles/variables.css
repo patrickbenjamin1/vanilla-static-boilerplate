@@ -1,0 +1,26 @@
+:root {
+  /** define variables */
+  --font-family-serif: 'Souvenir', sans-serif;
+
+  --brand-colour: #d80f43;
+  --grey-light: #f3e6e6;
+  --white: #fff;
+
+  --spacing-xsmall: 0.5rem;
+  --spacing-small: 1rem;
+  --spacing-medium: 2rem;
+  --spacing-large: 4rem;
+  --spacing-xlarge: 8rem;
+
+  --fixed-width: 1400px;
+  --fixed-width-small: 800px;
+
+  --timing-quick: 300ms;
+
+  /** assign globals */
+  font-family: var(--font-family-serif);
+  font-size: 16px;
+
+  padding: 0;
+  margin: 0;
+}

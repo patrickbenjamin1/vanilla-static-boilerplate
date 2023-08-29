@@ -1,0 +1,33 @@
+* {
+  box-sizing: border-box;
+}
+
+body,
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: unset;
+}
+
+body {
+  height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background-color: var(--grey-light);
+}
+
+a,
+a:visited,
+a:link,
+a:focus,
+a:active {
+  font-weight: bold;
+  color: inherit;
+}
+
+main {
+  width: 100vw;
+  padding: calc(var(--header-height) + var(--spacing-medium)) var(--spacing-medium) var(--spacing-medium) var(--spacing-medium);
+}

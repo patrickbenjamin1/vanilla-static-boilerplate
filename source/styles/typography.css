@@ -1,0 +1,9 @@
+p.big {
+  font-size: 1.8rem;
+  line-height: 2.4rem;
+}
+
+::selection {
+  background-color: var(--brand-colour);
+  color: var(--white);
+}

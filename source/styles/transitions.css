@@ -1,0 +1,7 @@
+#root {
+  transition: opacity var(--timing-quick);
+}
+
+#root[data-transitioning-out='true'] {
+  opacity: 0;
+}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    {{> meta.hbs title="My cool website" description="This is a cool website." }}
+
+    <script data-router-replace src="/index.bundle.js"></script>
+  </head>
+  <body>
+    {{> header.hbs }}
+
+    <div id="root" data-router-root>
+
+      <main class="view index-view">
+        <p>I&apos;m a page</p>
+
+        <div>
+          <a href="/2">other page</a>
+        </div>
+
+        {{#each stuff}}
+        <div>
+          <a href="/thing/{{slug}}">{{name}}</a>
+        </div>
+        {{/each}}
+      </main>
+
+      {{> footer.hbs }}
+    </div>
+  </body>
+</html>

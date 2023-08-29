@@ -1,0 +1,11 @@
+@import './styles/fonts.css';
+@import './styles/variables.css';
+@import './styles/layout.css';
+@import './styles/typography.css';
+@import './styles/transitions.css';
+
+@import './partials/header.css';
+@import './partials/footer.css';
+
+@import './views/index.css';
+@import './views/404.css';

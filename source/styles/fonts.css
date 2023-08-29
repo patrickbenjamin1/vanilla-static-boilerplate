@@ -1,0 +1,9 @@
+@font-face {
+  font-family: Souvenir;
+  src: url(../assets/Souvenir.ttf);
+}
+@font-face {
+  font-family: Souvenir;
+  font-weight: bold;
+  src: url(../assets/SouvenirB.ttf);
+}
