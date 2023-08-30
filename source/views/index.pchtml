@@ -1,10 +1,11 @@
 <!DOCTYPE html>
+
 <html>
   <head>
-    {{> meta.hbs title="My cool website" description="This is a cool website." }}
+    <_meta title="My cool website" description="This is a cool website." />
   </head>
   <body>
-    {{> header.hbs }}
+    <_header />
 
     <div id="root" data-router-root>
 
@@ -15,14 +16,13 @@
           <a href="/2">other page</a>
         </div>
 
-        {{#each stuff}}
-        <div>
-          <a href="/thing/{{slug}}">{{name}}</a>
-        </div>
-        {{/each}}
+        {stuff.map(thing => <div>
+          <a href="/thing/{thing.slug}">{thing.name}</a>
+        </div>).join('')}
+        
       </main>
 
-      {{> footer.hbs }}
+      <_footer />
       
       <script src="/index.bundle.js"></script>
     </div>

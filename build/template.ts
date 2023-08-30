@@ -2,13 +2,13 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as prettier from 'prettier'
 
-export namespace Templater {
-  export const getContextDefinitions = (context: {}) =>
+namespace Templater {
+  const getContextDefinitions = (context: {}) =>
     Object.keys(context)
-      .map((name) => `const ${name} = ${JSON.stringify(context[name])};`)
+      .map((name) => `const ${name} = ${JSON.stringify(context[name as keyof typeof context])};`)
       .join('')
 
-  export const sanitiseHtmlInJs = (input: string, context: {}): string => {
+  const sanitiseHtmlInJs = (input: string, context: {}): string => {
     return `\`${processHtml(input, context)}\``
   }
 
@@ -20,11 +20,11 @@ export namespace Templater {
     return evaluatedInput
   }
 
-  export const evaluateJsWithContext = (input: string, context: {}): string => {
+  const evaluateJsWithContext = (input: string, context: {}): string => {
     return eval(getContextDefinitions(context) + input)
   }
 
-  export const getBracketContents = (input: string, openingBracket: string, closingBracket: string) => {
+  const getBracketContents = (input: string, openingBracket: string, closingBracket: string) => {
     let matching = false
     let depth = 0
     let output: string[] = []
@@ -59,7 +59,7 @@ export namespace Templater {
   }
 
   /** takes a string and returns an array of the parts that look like HTML */
-  export const getHtml = (input: string, tagname?: string) => {
+  const getHtml = (input: string, tagname?: string) => {
     let matching = false
     let depth = 0
     let output: string[] = []
@@ -108,7 +108,7 @@ export namespace Templater {
     return output
   }
 
-  const getRootTagContents = (input: string) => input.match(/>(.*)</)[1]
+  const getRootTagContents = (input: string) => input.match(/>(.*)</)?.[1]
 
   const getAttributeKeyValuePairs = (input: string) => input.match(/ (\w*=[^> ]*)/g)
 
@@ -123,14 +123,12 @@ export namespace Templater {
   const getAttributes = (input: string) => {
     const attributes = getAttributeKeyValuePairs(input)
 
+    if (!attributes) {
+      return {}
+    }
+
     return attributes.reduce((output, current) => {
       const parts = current.trim().split('=')
-
-      console.log('')
-      console.log(parts[0])
-      console.log(parts[1])
-      console.log(parts[1], getAttributeAsTypeOrString(parts[1]))
-      console.log('')
 
       return {
         ...output,
@@ -160,8 +158,6 @@ export namespace Templater {
 
       const attributes = getAttributes(html)
 
-      console.log(attributes)
-
       const evaluatedPartial = runInner(partial, { ...context, ...attributes, contents }, partials)
 
       return output.replace(html, evaluatedPartial)
@@ -170,7 +166,7 @@ export namespace Templater {
     return evaluatedInput
   }
 
-  export function runInner(input: string, context: {}, partials: { [name: string]: string }): string {
+  function runInner(input: string, context: {}, partials: { [name: string]: string }): string {
     const processedHtml = processHtml(input, context)
 
     let evaluatedInput = evaluateJsWithContext(`\`${processedHtml}\``, context)
@@ -189,16 +185,4 @@ export namespace Templater {
 
     return prettiedInput
   }
-
-  export const test = async () => {
-    const input = fs.readFileSync(path.resolve(__dirname, './test.pchtml'))
-
-    const partial = fs.readFileSync(path.resolve(__dirname, './partial.pchtml'))
-
-    const output = await run(input.toString(), { person: 'aa', stuff: ['a', 'b', 'c'], pish: false }, { partial: partial.toString() })
-
-    console.log(output)
-  }
 }
-
-Templater.test()

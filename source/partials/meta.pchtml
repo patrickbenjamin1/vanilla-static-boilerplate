@@ -1,7 +1,5 @@
-<!-- import CSS -->
 <link rel='stylesheet' href='/styles.css' preload />
 
-<!-- favicon -->
 <link rel='apple-touch-icon' sizes='180x180' href='/apple-touch-icon.png' />
 <link rel='icon' type='image/png' sizes='32x32' href='/favicon-32x32.png' />
 <link rel='icon' type='image/png' sizes='16x16' href='/favicon-16x16.png' />
@@ -10,13 +8,11 @@
 <meta name='msapplication-TileColor' content='#ffffff' />
 <meta name='theme-color' content='#ffffff' />
 
-<!-- import js -->
 <script src='/app.bundle.js'></script>
 
-<!-- metadata -->
-<title data-router-replace>{{title}}</title>
-<meta data-router-replace name='og:title' content='{{title}}' />
-<meta data-router-replace name='description' content='{{description}}' />
-<meta data-router-replace name='og:description' content='{{description}}' />
-<meta data-router-replace name='twitter:description' content='{{description}}' />
+<title data-router-replace>{title}</title>
+<meta data-router-replace name='og:title' content='{title}' />
+<meta data-router-replace name='description' content='{description}' />
+<meta data-router-replace name='og:description' content='{description}' />
+<meta data-router-replace name='twitter:description' content='{description}' />
 <meta data-router-replace name='viewport' content='width=device-width, initial-scale=1.0' />

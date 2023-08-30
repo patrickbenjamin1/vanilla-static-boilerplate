@@ -2,8 +2,11 @@ import * as Handlebars from 'handlebars'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as chokidar from 'chokidar'
+import { Templater } from './template'
 
 export namespace HTMLBuilder {
+  let partials: { [key: string]: string } = {}
+
   export type CoreConfig = {
     watch?: boolean
     publicDirectory?: string
@@ -28,10 +31,9 @@ export namespace HTMLBuilder {
   // build a partial and add it to Handlebars
   const registerPartial = (filename: string, config: CoreConfig) => {
     // read partial file to string
-    const file = fs.readFileSync(path.resolve(config.partialsDirectory, filename))
+    const file = fs.readFileSync(path.resolve(config.partialsDirectory, filename)).toString()
 
-    // register partial
-    Handlebars.registerPartial(filename, file.toString())
+    partials = { ...partials, [filename.split('.')[0]]: file }
 
     console.log(`registered partial ${filename}`)
   }
@@ -45,7 +47,7 @@ export namespace HTMLBuilder {
       // ignore if not html
       const extension = filename.split('.')[1]
 
-      if (extension !== 'html' && extension !== 'hbs') {
+      if (extension !== 'pchtml') {
         return
       }
 
@@ -57,15 +59,12 @@ export namespace HTMLBuilder {
   }
 
   // build a view
-  const buildPage = <T>(page: Page<T>, config: CoreConfig) => {
+  const buildPage = async <T>(page: Page<T>, config: CoreConfig) => {
     // read view file to string
     const file = fs.readFileSync(page.template)
 
-    // compile handlebar template
-    const template = Handlebars.compile(file.toString())
-
     // generate file
-    const outputFile = template({ ...(page.context || {}), ...(config.globalContext || {}) })
+    const outputFile = await Templater.run(file.toString(), { ...(page.context || {}), ...(config.globalContext || {}) }, partials)
 
     const directories = page.outputPath.split('/').slice(0, -1)
 
@@ -95,10 +94,10 @@ export namespace HTMLBuilder {
   }
 
   // build a set of pages
-  const buildPages = (pages: Page<any>[], config: CoreConfig) => {
-    pages.forEach((page) => {
+  const buildPages = async (pages: Page<any>[], config: CoreConfig) => {
+    for (const page of pages) {
       buildPage(page, config)
-    })
+    }
   }
 
   // copy public directory
@@ -134,25 +133,23 @@ export namespace HTMLBuilder {
     })
 
     // build registered pages
-    buildPages(pages, config)
+    await buildPages(pages, config)
 
     // set up watchers
     if (config.watch) {
       console.log('watching for changes...\n')
 
       // add watchers for partials - TODO on this: create dependency tree and only rebuild pages up that dependency tree from this filename
-      chokidar
-        .watch([path.resolve(config.partialsDirectory, '**/*.html'), path.resolve(config.partialsDirectory, '**/*.hbs')])
-        .on('all', (_, filePath) => {
-          // get filename from path
-          const filename = path.basename(filePath)
+      chokidar.watch([path.resolve(config.partialsDirectory, '**/*.pchtml')]).on('all', (_, filePath) => {
+        // get filename from path
+        const filename = path.basename(filePath)
 
-          // reregister partials
-          registerPartial(filename, config)
+        // reregister partials
+        registerPartial(filename, config)
 
-          // rebuild pages on changes to partials
-          buildPages(pages, { ...config, watch: false })
-        })
+        // rebuild pages on changes to partials
+        buildPages(pages, { ...config, watch: false })
+      })
 
       // copy from public directory
       chokidar.watch(config.publicDirectory).on('all', copyPublic)

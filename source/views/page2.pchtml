@@ -1,20 +1,20 @@
 <!DOCTYPE html>
 <html>
   <head>
-    {{> meta.hbs title="My cool website page 2" description="This is a cool website." }}
+    <_meta title="My cool website page 2" description="This is a cool website." />
   </head>
   <body>
-    {{> header.hbs }}
+    <_header />
 
     <div id="root" data-router-root>
 
       <main class="view index-view">
         <p>I&apos;m another page</p>
 
-        <p>{{content}}</p>
+        <p>{content}</p>
       </main>
 
-      {{> footer.hbs }}
+      <_footer />
     </div>
   </body>
 </html>

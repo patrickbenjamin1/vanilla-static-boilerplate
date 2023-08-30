@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html>
   <head>
-    {{> meta.hbs title=(concat "My cool website " name) description="This is a cool website." }}
+    <_meta title={"My cool website " + name} description="This is a cool website." />
   </head>
   <body>
-    {{> header.hbs }}
+    <_header />
 
     <div id="root" data-router-root>
 
       <main class="view index-view">
         <p>I&apos;m a thing</p>
-        <p>My name is {{name}}</p>
+        <p>My name is {name}</p>
       </main>
 
-      {{> footer.hbs }}
+      <_footer />
     </div>
   </body>
 </html>

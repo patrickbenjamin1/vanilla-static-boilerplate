@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
   <head>
-    {{> meta.hbs title="404 - page not found" description="The requested page doesn't seem to exist" }}
+    <_meta title="404 - page not found" description="The requested page doesn't seem to exist" />
   </head>
   <body>
-    {{> header.hbs }}
+    <_header />
 
     <main class="view error-view">
       <h1>404</h1>
@@ -12,6 +12,6 @@
       <a href="/">back to the home page</a>
     </main>
 
-    {{> footer.hbs }}
+    <_footer />
   </body>
 </html>
