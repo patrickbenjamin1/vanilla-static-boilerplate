@@ -45,6 +45,11 @@ const config: webpack.Configuration = {
         use: 'ts-loader',
         exclude: /node_modules/,
       },
+      {
+        test: /\.(ttf)(\?[\s\S]+)?$/,
+        loader: 'file-loader',
+        options: { name: '[name].[ext]' },
+      },
     ],
   },
 }
