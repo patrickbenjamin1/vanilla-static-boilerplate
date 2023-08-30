@@ -1,0 +1,8 @@
+<div className='my-cool-partial'>
+    <div>{attr}</div>
+    <div>{attr2}</div>
+
+    {contents}
+
+    {attr3.map(item => <p>{item}</p>).join('')}
+</div>

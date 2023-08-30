@@ -1,0 +1,11 @@
+<div class='test'>
+    <p>Hello {person}</p>
+
+    <div class='things' aaa="{person}">
+        {stuff.map(aaa => <p>{aaa}</p>).join('')}
+    </div>
+
+    {!!pish ? <p>pish</p> : ''}
+
+    <_partial attr="ooo" attr2={person} attr3={JSON.stringify(stuff)} attr4="5">test</_partial>
+</div>
