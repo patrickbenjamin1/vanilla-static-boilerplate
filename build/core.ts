@@ -2,12 +2,14 @@ import * as Handlebars from 'handlebars'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as chokidar from 'chokidar'
-import { Paths } from './paths'
-import { Helpers } from './helpers'
 
 export namespace HTMLBuilder {
   export type CoreConfig = {
     watch?: boolean
+    publicDirectory?: string
+    partialsDirectory: string
+    outputDirectory: string
+    globalContext?: any
   }
 
   export type Page<T> = {
@@ -19,18 +21,14 @@ export namespace HTMLBuilder {
   export type BuildPage = <T>(page: Page<T>) => void
 
   export type BuildConfig = CoreConfig & {
-    registerPages: (registerPage: <T>(page: Page<T>) => void) => Promise<void>
-  }
-
-  // create directories
-  if (!fs.existsSync(Paths.outputDirectory)) {
-    fs.mkdirSync(Paths.outputDirectory)
+    registerPages: (registerPage: <T>(page: Page<T>) => void) => Promise<void> | void
+    onStartBuild?: () => Promise<void> | void
   }
 
   // build a partial and add it to Handlebars
-  const registerPartial = (filename: string) => {
+  const registerPartial = (filename: string, config: CoreConfig) => {
     // read partial file to string
-    const file = fs.readFileSync(path.resolve(Paths.partialsDirectory, filename))
+    const file = fs.readFileSync(path.resolve(config.partialsDirectory, filename))
 
     // register partial
     Handlebars.registerPartial(filename, file.toString())
@@ -39,9 +37,9 @@ export namespace HTMLBuilder {
   }
 
   // register all partials
-  const registerPartials = () => {
+  const registerPartials = (config: CoreConfig) => {
     // get partials
-    const partialsFilenames = fs.readdirSync(Paths.partialsDirectory)
+    const partialsFilenames = fs.readdirSync(config.partialsDirectory)
 
     partialsFilenames.forEach((filename) => {
       // ignore if not html
@@ -52,7 +50,7 @@ export namespace HTMLBuilder {
       }
 
       // register
-      registerPartial(filename)
+      registerPartial(filename, config)
     })
 
     console.log('built partials\n')
@@ -67,14 +65,14 @@ export namespace HTMLBuilder {
     const template = Handlebars.compile(file.toString())
 
     // generate file
-    const outputFile = template(page.context)
+    const outputFile = template({ ...(page.context || {}), ...(config.globalContext || {}) })
 
     const directories = page.outputPath.split('/').slice(0, -1)
 
     // ensure directories exist if output not at root of dist
     if (directories.length) {
       directories.reduce((parentPath, directory) => {
-        const fullPath = path.resolve(Paths.outputDirectory, parentPath, directory)
+        const fullPath = path.resolve(config.outputDirectory, parentPath, directory)
 
         if (!fs.existsSync(fullPath)) {
           fs.mkdirSync(fullPath)
@@ -85,17 +83,18 @@ export namespace HTMLBuilder {
     }
 
     // write file
-    fs.writeFileSync(path.resolve(Paths.outputDirectory, page.outputPath), outputFile)
+    fs.writeFileSync(path.resolve(config.outputDirectory, page.outputPath), outputFile)
 
     // watch if param given
     if (config.watch) {
       // rebuild if page template changes or any partial changes (todo - store partials used and only update if they're used)
-      chokidar.watch(page.template).on('change', () => buildPage(page, config))
+      chokidar.watch(page.template).on('change', () => buildPage(page, { ...config, watch: false }))
     }
 
     console.log(`built view ${page.outputPath}`)
   }
 
+  // build a set of pages
   const buildPages = (pages: Page<any>[], config: CoreConfig) => {
     pages.forEach((page) => {
       buildPage(page, config)
@@ -103,39 +102,60 @@ export namespace HTMLBuilder {
   }
 
   // copy public directory
-  const copyPublic = () => {
-    if (fs.existsSync(Paths.publicDirectory)) {
+  const copyPublic = (config: CoreConfig) => {
+    if (fs.existsSync(config.publicDirectory)) {
       // copy public directory to root of output
-      fs.cpSync(Paths.publicDirectory, Paths.outputDirectory, { recursive: true })
+      fs.cpSync(config.publicDirectory, config.outputDirectory, { recursive: true })
 
       console.log('copied public\n')
     }
   }
 
-  export const build = async ({ registerPages, watch }: BuildConfig) => {
-    Helpers.register()
+  export const build = async (config: BuildConfig) => {
+    console.log('on start build...')
+    // run onStartBuild hook (use for registering handlebars helpers and such)
+    await config.onStartBuild?.()
+
+    // create directories
+    if (!fs.existsSync(config.outputDirectory)) {
+      console.log('creating output directory...')
+      fs.mkdirSync(config.outputDirectory)
+    }
 
     // run initial builds
-    registerPartials()
-    copyPublic()
+    registerPartials(config)
+    copyPublic(config)
 
+    // register pages from given registerPages hook
     const pages: Page<any>[] = []
-    await registerPages((page) => pages.push(page))
+    await config.registerPages((page) => {
+      console.log(`registered page at ${page.outputPath}`)
+      pages.push(page)
+    })
 
-    buildPages(pages, { watch })
+    // build registered pages
+    buildPages(pages, config)
 
     // set up watchers
-    if (watch) {
+    if (config.watch) {
       console.log('watching for changes...\n')
 
-      // add watchers for partials
-      chokidar.watch([path.resolve(Paths.partialsDirectory, '**/*.html'), path.resolve(Paths.partialsDirectory, '**/*.hbs')]).on('all', () => {
-        registerPartials()
-        buildPages(pages, { watch: false })
-      })
+      // add watchers for partials - TODO on this: create dependency tree and only rebuild pages up that dependency tree from this filename
+      chokidar
+        .watch([path.resolve(config.partialsDirectory, '**/*.html'), path.resolve(config.partialsDirectory, '**/*.hbs')])
+        .on('all', (_, filePath) => {
+          // get filename from path
+          const filename = path.basename(filePath)
+
+          // reregister partials
+          registerPartial(filename, config)
+
+          // rebuild pages on changes to partials
+          buildPages(pages, { ...config, watch: false })
+        })
 
       // copy from public directory
-      chokidar.watch(Paths.publicDirectory).on('all', copyPublic)
+      chokidar.watch(config.publicDirectory).on('all', copyPublic)
     }
   }
 }

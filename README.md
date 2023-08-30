@@ -31,13 +31,15 @@ The contents of `source/public/` is also copied over and served from the root of
 
 HTML is bundled using handlebars
 
-All logic for this is in `/build` and the only bit you should need to change is in `/build/buildHtml.js`
+All logic for this is in `/build` and the only bit you should need to change is in `/build/buildHtml.ts`
 
 Here, you can register pages uses the `registerPages` hook passed into the `build` function exported from `core.js` (a file containing all the important logic for this). This takes a path to the template file, an output path that will correspond to the path its served from (i.e. `/my-thing/id/cool-url`), and some context that gets passed to Handlebars
 
 The `registerPages` hook is asyncronous, meaning data can be fetched in here from an external API and passed into the context of `registerPage`, making API responses (i.e. from a CMS with a JSON API) available to your pages
 
 Anything in `/source/partials/` is registered as a partial and can be used in Handlebars templates
+
+`/build/buildHtml.ts` is a ts-node script which uses handlebars to bundle together html and inject context
 
 ### Router
 
@@ -54,6 +56,12 @@ It will also replace anything in the document head that has `data-router-replace
 Webpack is used to bundle Typescript
 
 Any TS file in `views/` will create a new bundle with that as the entrypoint, allowing page specific code to only be requested for each page. This ensures that only code required for each page is requested, rather than a giant mega bundle, and ensures new code is executed for each page on load.
+
+### CSS bundling
+
+Webpack is used to bundle CSS
+
+Everything must be imported into `sources/styles.css` to be bundled
 
 ## Build
 

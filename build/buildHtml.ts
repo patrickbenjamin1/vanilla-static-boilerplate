@@ -1,6 +1,7 @@
 import { HTMLBuilder } from './core'
 import * as path from 'path'
 import { Paths } from './paths'
+import { Helpers } from './helpers'
 
 const stuff = [
   { name: 'thing', slug: 'thing' },
@@ -35,6 +36,10 @@ const build = () => {
   HTMLBuilder.build({
     watch,
     registerPages,
+    onStartBuild: () => Helpers.register(),
+    publicDirectory: Paths.publicDirectory,
+    outputDirectory: Paths.outputDirectory,
+    partialsDirectory: Paths.partialsDirectory,
   })
 }
 
