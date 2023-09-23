@@ -82,6 +82,8 @@ export namespace Router {
 
       // end transition
       root.setAttribute('data-transitioning-out', 'false')
+    } else {
+      console.error('router root not found - add [data-router-root] to your root element')
     }
   }
 

@@ -1,7 +1,6 @@
-<!DOCTYPE html>
 <html>
   <head>
-    <_meta title={"My cool website " + name} description="This is a cool website." />
+    <_meta title="{'My cool website ' + name}" description="This is a cool website." />
   </head>
   <body>
     <_header />

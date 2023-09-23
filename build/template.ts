@@ -1,17 +1,22 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import * as prettier from 'prettier'
 
-namespace Templater {
+/**
+ * todo : document here
+ */
+
+export namespace Templater {
+  /** get the frontmatter for the Template which defines the context as variables so they're accessible to the template string */
   const getContextDefinitions = (context: {}) =>
     Object.keys(context)
       .map((name) => `const ${name} = ${JSON.stringify(context[name as keyof typeof context])};`)
       .join('')
 
+  /** wrap html with backticks */
   const sanitiseHtmlInJs = (input: string, context: {}): string => {
     return `\`${processHtml(input, context)}\``
   }
 
+  /** gets all html blocks and wraps them in backticks */
   const sanitiseAllHtmlInJs = (input: string, context: {}) => {
     const htmlSections = getHtml(input)
 
@@ -20,6 +25,7 @@ namespace Templater {
     return evaluatedInput
   }
 
+  /** evaluates a piece of javascript with the given context defined as variables and return the output */
   const evaluateJsWithContext = (input: string, context: {}): string => {
     return eval(getContextDefinitions(context) + input)
   }
@@ -110,7 +116,7 @@ namespace Templater {
 
   const getRootTagContents = (input: string) => input.match(/>(.*)</)?.[1]
 
-  const getAttributeKeyValuePairs = (input: string) => input.match(/ (\w*=[^> ]*)/g)
+  const getAttributeKeyValuePairs = (input: string) => input.match(/ (\w*="[^>"]*")/g)
 
   const getAttributeAsTypeOrString = (value: string) => {
     try {

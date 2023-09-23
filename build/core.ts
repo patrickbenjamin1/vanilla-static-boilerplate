@@ -1,4 +1,3 @@
-import * as Handlebars from 'handlebars'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as chokidar from 'chokidar'

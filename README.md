@@ -27,19 +27,34 @@ This will watch and build all html, ts, and css files, and serve them using brow
 
 The contents of `source/public/` is also copied over and served from the root of the server
 
-### HTML bundling
+### HTML generation
 
-HTML is bundled using handlebars
+HTML is bundled using a custom HTML templating system, loosely based on JSX
 
 All logic for this is in `/build` and the only bit you should need to change is in `/build/buildHtml.ts`
 
-Here, you can register pages uses the `registerPages` hook passed into the `build` function exported from `core.js` (a file containing all the important logic for this). This takes a path to the template file, an output path that will correspond to the path its served from (i.e. `/my-thing/id/cool-url`), and some context that gets passed to Handlebars
+Here, you can register pages uses the `registerPages` hook passed into the `build` function exported from `core.js` (a file containing all the important logic for this). This takes a path to the template file, an output path that will correspond to the path its served from (i.e. `/my-thing/id/cool-url`), and some context that gets passed into templates
 
 The `registerPages` hook is asyncronous, meaning data can be fetched in here from an external API and passed into the context of `registerPage`, making API responses (i.e. from a CMS with a JSON API) available to your pages
 
-Anything in `/source/partials/` is registered as a partial and can be used in Handlebars templates
+Anything in `/source/partials/` is registered as a partial which can be used in template files
 
-`/build/buildHtml.ts` is a ts-node script which uses handlebars to bundle together html and inject context
+#### HTML Templater
+
+PCHTML files are template files using a custom (but very simple) templating system, loosely based on the simplicity of JSX
+
+Under the hood, all these files are turned into JS template strings (i.e. `<p>{name}</p>` is turned into `` `<p>${name}</p>\` ``)
+
+Anything in the braces is evaluated as javascript and returns the value as a string.
+
+Partials are registered from the `partialsDirectory` given to the build function. These are accessed using the filename preceded by an underscore. I.e. `<_header title='foobar' />` will render the file `${partialsDirectory}/header.pchtml` with the context `{ title: 'foobar' }`
+
+All logic for templating is found in `/build/template.ts`.
+
+Due to it's similarity in syntax to JSX, I recommend setting VSCode (or whatever IDE you're on) to treat pchtml files as JSX files - but there are some limitations
+
+- JSX requires a single root html element, whereas this doesn't by design
+- attributes need to be wrapped in quotes, with braces inside - i.e. `<div className={className} />` in JSX would be `<div className="{className}" />` in PCHTML
 
 ### Router
 
@@ -68,3 +83,25 @@ Everything must be imported into `sources/styles.css` to be bundled
 To build servable outputs, run `npm run build`
 
 The contents of `dist` can now be used as a static thing
+
+# Todo
+
+- cached repository layer which wraps up requests to third party APIs
+  - make really generic (i.e. a cache accessor class which has an array of document types given in the constructor, with formatted requests for CRUDs passed into constructor)
+  - cache all data in json arrays by document, use results as context for page generation
+  - build this for Prismic initially, but make cache accessors generic enough to be reused
+  - for Prismic, this can request only documents with later updated dates than the last build - this might be possible for other backends, but should be kept optional
+- write some utils for using the repository layer at runtime - embedded json in script tag?
+- allow passing helper functions into templater (https://stackoverflow.com/questions/6754919/json-stringify-function)
+- implement some kind of query language for large json files (or store them some other way - as the current implementation scales, it'll get unwieldy cus the whole file will need to be loaded into memory - could also page the json and query them one at a time, will slow things down way more but will help stop things getting too big)
+- write some nice utils for using the templater at runtime
+- way more documentation for templater
+- switch to Vite
+- dependency tree for partial rerenders in dev
+  - currently builds all page on partial changes - should keep track of which pages include which partials and only rebuild the necessary pages
+- combine different watchers
+  - currently has `npm run serve`, `npm run start-html` and `npm run start-webpack` - these should be combined into a single script
+  - custom cli?
+- vscode extension for syntax highlighting
+  - I will almost definitely never do this lol but would be fun to learn how to write one
+- write an express server to allow live server side rendering on some routes

@@ -8,4 +8,5 @@ export namespace Paths {
   export const partialsDirectory = path.resolve(sourceDirectory, 'partials')
   export const publicDirectory = path.resolve(sourceDirectory, 'public')
   export const outputDirectory = path.resolve(rootDirectory, 'dist')
+  export const cacheDirectory = path.resolve(rootDirectory, 'cache')
 }
