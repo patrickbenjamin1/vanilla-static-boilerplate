@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import { createLogger } from './logger'
 
 /**
  * a limited but powerful repository layer that allows requesting of documents of a consistent type and storage in a very aggressive cache
@@ -14,9 +15,17 @@ import * as path from 'path'
  *
  * It returns two accessors - getOne (which gets by an id) and getAll (which gets the entire cache (to be replaced with some kind of json query
  * language)) - these should be used within buildHtml to pass data to given pages
+ *
+ * using this is completely optional in this setup, and data can just be fetched with fetch directly if a more flexible way of requesting data
+ * is needed - in cases where it can be used (such as document based CMSs which support the above) it will massively speed up pulling data from
+ * the cms meaning the build step is way quicker
+ *
+ * caches are stored as json dictionaries keyed by an identifier
  */
 
 export namespace Repository {
+  const logger = createLogger('Repository')
+
   type Item<T> = T & {
     identifier: string
   }
@@ -26,13 +35,13 @@ export namespace Repository {
     items: Record<string, Item<T>>
   }
 
-  interface ICachedFetcher<T> {
+  interface IRepository<T> {
     update: () => Promise<void>
     getOne: (identifier: string) => Item<T>
     getAll: () => Item<T>[]
   }
 
-  interface ICreateCache<T> {
+  interface ICreateRepositoryConfig<T> {
     /** must return an array of all items that have been updated since the date passed into it */
     getSinceLastUpdated: (lastUpdated: string | undefined) => Promise<Item<T>[]>
 
@@ -43,49 +52,53 @@ export namespace Repository {
     documentTypeName: string
   }
 
-  const getFullCacheDirectory = <T>({ outputDirectory }: Pick<ICreateCache<T>, 'outputDirectory'>) => path.resolve(outputDirectory, 'cache')
+  const getFullCacheDirectory = <T>({ outputDirectory }: Pick<ICreateRepositoryConfig<T>, 'outputDirectory'>) =>
+    path.resolve(outputDirectory, 'cache')
 
-  const getCachePath = <T>({ documentTypeName, outputDirectory }: Pick<ICreateCache<T>, 'documentTypeName' | 'outputDirectory'>) =>
+  const getCachePath = <T>({ documentTypeName, outputDirectory }: Pick<ICreateRepositoryConfig<T>, 'documentTypeName' | 'outputDirectory'>) =>
     `${getFullCacheDirectory({ outputDirectory })}/${documentTypeName}.json`
 
-  const createCacheDirectoryIfNotExists = <T>({ outputDirectory }: Pick<ICreateCache<T>, 'outputDirectory'>) => {
+  const createCacheDirectoryIfNotExists = <T>({ outputDirectory }: Pick<ICreateRepositoryConfig<T>, 'outputDirectory'>) => {
     if (!fs.existsSync(getFullCacheDirectory({ outputDirectory }))) {
+      logger.info(`Creating cache directory...`)
       fs.mkdirSync(getFullCacheDirectory({ outputDirectory }))
     }
   }
 
-  const getLastFetchedFormattedDate = () => {
-    const date = new Date()
-
-    return date.toISOString()
-  }
+  const getLastFetchedFormattedDate = () => new Date().toISOString()
 
   const retrieveCache = <T>({
     documentTypeName,
     outputDirectory,
-  }: Pick<ICreateCache<T>, 'documentTypeName' | 'outputDirectory'>): ICache<T> | undefined => {
+  }: Pick<ICreateRepositoryConfig<T>, 'documentTypeName' | 'outputDirectory'>): ICache<T> | undefined => {
     createCacheDirectoryIfNotExists({ outputDirectory })
 
     const cachePath = getCachePath({ documentTypeName, outputDirectory })
 
     if (!fs.existsSync(cachePath)) {
+      logger.info(`No cache found for ${documentTypeName}`)
+
       return undefined
     }
 
     const cacheJson = fs.readFileSync(cachePath)
+
+    logger.success(`Read from cache for ${documentTypeName}`)
 
     return JSON.parse(cacheJson.toString()) as ICache<T>
   }
 
   const setCache = <T>(
     newCacheValue: ICache<T>,
-    { documentTypeName, outputDirectory }: Pick<ICreateCache<T>, 'documentTypeName' | 'outputDirectory'>
+    { documentTypeName, outputDirectory }: Pick<ICreateRepositoryConfig<T>, 'documentTypeName' | 'outputDirectory'>
   ) => {
     createCacheDirectoryIfNotExists({ outputDirectory })
 
     const cachePath = getCachePath({ documentTypeName, outputDirectory })
 
     fs.writeFileSync(cachePath, JSON.stringify(newCacheValue))
+
+    logger.success(`Wrote to cache for ${documentTypeName}`)
   }
 
   const itemArrayToDictionary = <T>(items: Item<T>[]) => {
@@ -105,7 +118,9 @@ export namespace Repository {
     return Object.keys(items).reduce((output, identifier) => [...output, items[identifier]], [])
   }
 
-  export const create = <T>(config: ICreateCache<T>): ICachedFetcher<T> => {
+  export const create = <T>(config: ICreateRepositoryConfig<T>): IRepository<T> => {
+    logger.info(`Creating repository for ${config.documentTypeName}...`)
+
     /** retrive all new documents since the last updated date using the given getSinceLastUpdated function and store them in the cache */
     const update = async () => {
       const date = getLastFetchedFormattedDate()
@@ -116,7 +131,7 @@ export namespace Repository {
       const newest = await config.getSinceLastUpdated(lastCacheValue?.lastFetched)
 
       const newItemsDictionary = {
-        ...lastCacheValue.items,
+        ...(lastCacheValue?.items || {}),
         ...stripUnpublished(itemArrayToDictionary(newest), publishedIds),
       }
 
@@ -130,6 +145,8 @@ export namespace Repository {
 
     /** retrieve an item from the cache by an id */
     const getOne = (identifier: string) => {
+      logger.success(`Get one ${config.documentTypeName} at ${identifier}`)
+
       const cache = retrieveCache<T>(config)
 
       return cache.items[identifier] || undefined
@@ -137,6 +154,8 @@ export namespace Repository {
 
     /** retrieve all items from the cache */
     const getAll = () => {
+      logger.success(`Get all ${config.documentTypeName}`)
+
       const cache = retrieveCache<T>(config)
 
       return itemDictionaryToArray(cache.items)

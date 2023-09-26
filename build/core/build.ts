@@ -1,9 +1,12 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import * as chokidar from 'chokidar'
-import { Templater } from './template'
+import { Templater } from './templater'
+import { createLogger } from './logger'
 
-export namespace HTMLBuilder {
+export namespace Build {
+  const logger = createLogger('Build')
+
   let partials: { [key: string]: string } = {}
 
   export type CoreConfig = {
@@ -34,7 +37,7 @@ export namespace HTMLBuilder {
 
     partials = { ...partials, [filename.split('.')[0]]: file }
 
-    console.log(`registered partial ${filename}`)
+    logger.info(`registered partial ${filename}`)
   }
 
   // register all partials
@@ -54,7 +57,7 @@ export namespace HTMLBuilder {
       registerPartial(filename, config)
     })
 
-    console.log('built partials\n')
+    logger.info('built partials\n')
   }
 
   // build a view
@@ -89,13 +92,13 @@ export namespace HTMLBuilder {
       chokidar.watch(page.template).on('change', () => buildPage(page, { ...config, watch: false }))
     }
 
-    console.log(`built view ${page.outputPath}`)
+    logger.info(`built view ${page.outputPath}`)
   }
 
   // build a set of pages
   const buildPages = async (pages: Page<any>[], config: CoreConfig) => {
     for (const page of pages) {
-      buildPage(page, config)
+      await buildPage(page, config)
     }
   }
 
@@ -105,18 +108,18 @@ export namespace HTMLBuilder {
       // copy public directory to root of output
       fs.cpSync(config.publicDirectory, config.outputDirectory, { recursive: true })
 
-      console.log('copied public\n')
+      logger.info('copied public\n')
     }
   }
 
-  export const build = async (config: BuildConfig) => {
-    console.log('on start build...')
+  export const run = async (config: BuildConfig) => {
+    logger.info('on start build...')
     // run onStartBuild hook (use for registering handlebars helpers and such)
     await config.onStartBuild?.()
 
     // create directories
     if (!fs.existsSync(config.outputDirectory)) {
-      console.log('creating output directory...')
+      logger.info('creating output directory...')
       fs.mkdirSync(config.outputDirectory)
     }
 
@@ -127,16 +130,18 @@ export namespace HTMLBuilder {
     // register pages from given registerPages hook
     const pages: Page<any>[] = []
     await config.registerPages((page) => {
-      console.log(`registered page at ${page.outputPath}`)
+      logger.info(`registered page at ${page.outputPath}`)
       pages.push(page)
     })
 
     // build registered pages
     await buildPages(pages, config)
 
+    logger.info('complete...\n')
+
     // set up watchers
     if (config.watch) {
-      console.log('watching for changes...\n')
+      logger.info('watching for changes...\n')
 
       // add watchers for partials - TODO on this: create dependency tree and only rebuild pages up that dependency tree from this filename
       chokidar.watch([path.resolve(config.partialsDirectory, '**/*.pchtml')]).on('all', (_, filePath) => {

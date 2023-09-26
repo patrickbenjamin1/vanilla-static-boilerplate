@@ -1,14 +1,13 @@
-import { HTMLBuilder } from './core'
 import * as path from 'path'
 import { Paths } from './paths'
-import { Repository } from './repository'
+import { Build } from './core'
 
 const stuff = [
   { name: 'thing', slug: 'thing' },
   { name: 'other thing', slug: 'other-thing' },
 ]
 
-const registerPages: HTMLBuilder.BuildConfig['registerPages'] = async (registerPage) => {
+const registerPages: Build.BuildConfig['registerPages'] = async (registerPage) => {
   registerPage({ template: path.resolve(Paths.viewsDirectory, 'index.pchtml'), context: { stuff }, outputPath: 'index.html' })
 
   registerPage({
@@ -28,12 +27,12 @@ const registerPages: HTMLBuilder.BuildConfig['registerPages'] = async (registerP
   registerPage({ template: path.resolve(Paths.viewsDirectory, '404.pchtml'), context: {}, outputPath: '404.html' })
 }
 
-const build = () => {
-  // process arguments
+const build = async () => {
+  // get arguments for node script
   const args = process.argv
   const watch = args.includes('--watch')
 
-  HTMLBuilder.build({
+  await Build.run({
     watch,
     registerPages,
     publicDirectory: Paths.publicDirectory,

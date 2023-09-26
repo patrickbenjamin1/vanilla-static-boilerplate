@@ -1,6 +1,12 @@
 # Vanilla Static Boilerplate
 
-Boilerplate which builds a static set of HTML files using handlebars (with utils for defining pages and such) and uses webpack to bundle global and page-level js (from typescript) and to bundle all css
+Boilerplate for building static HTML web pages without a framework
+
+Has a custom build step (see build/) which builds a set of HTML documents using a custom HTML templating language based loosely on the syntax of JSX. (see HTML Generation)
+
+Also transpiles and bundles ts, and bundles css using Webpack.
+
+Also has a local dev server using browser-sync
 
 ## Prerequisites
 
@@ -41,36 +47,45 @@ Anything in `/source/partials/` is registered as a partial which can be used in 
 
 #### HTML Templater
 
-PCHTML files are template files using a custom (but very simple) templating system, loosely based on the simplicity of JSX
+PCHTML files are template files using a custom (but very simple) templating system, loosely based on the syntax of JSX.
 
 Under the hood, all these files are turned into JS template strings (i.e. `<p>{name}</p>` is turned into `` `<p>${name}</p>\` ``)
 
-Anything in the braces is evaluated as javascript and returns the value as a string.
+Anything in braces is evaluated as javascript to the return value of that js (i.e. `<div>{things.map(thing => <p>{thing.name}</p>).join('')</div>}`)
 
-Partials are registered from the `partialsDirectory` given to the build function. These are accessed using the filename preceded by an underscore. I.e. `<_header title='foobar' />` will render the file `${partialsDirectory}/header.pchtml` with the context `{ title: 'foobar' }`
+`Templater.run` supports context (which is passed into pages when using `Build.run`) which is accessed as global variables in the evaluated javascript
+
+Additionally, PCHTML supports partials. Partials are registered from any PCHTML file in the `partialsDirectory` given to the build function. These are accessed using the filename preceded by an underscore. Any attributes are passed into the partial as context.
+
+I.e. `<_header title='foobar' />` will render the file `${partialsDirectory}/header.pchtml` with the context `{ title: 'foobar' }`
 
 All logic for templating is found in `/build/template.ts`.
 
-Due to it's similarity in syntax to JSX, I recommend setting VSCode (or whatever IDE you're on) to treat pchtml files as JSX files - but there are some limitations
+Due to it's similarity in syntax to JSX, I recommend setting VSCode (or whatever IDE you're on) to treat pchtml files as JSX files - but there are some limitations:
 
 - JSX requires a single root html element, whereas this doesn't by design
 - attributes need to be wrapped in quotes, with braces inside - i.e. `<div className={className} />` in JSX would be `<div className="{className}" />` in PCHTML
+- arrays need to be joined as their return is evaluated as strings
 
 ### Router
 
-When served, the site should be served as static html files (without the extension)
+When served, the output of dist should be served statically (without the extension)
 
 Once served, there is a router which takes over navigation events in the browser
 
-This requests the given HTML for a new page, and looks for a div with the attribute `data-router-root`, and replaces the current `data-router-root` with the new one
+This requests the given HTML for a new page, and looks for a div with the attribute `data-router-root`, and replaces the current `data-router-root` with the new one. Therefore, every page needs to have `data-router-root` with anything specific to that page included
 
-It will also replace anything in the document head that has `data-router-replace` with whatever comes from the new page
+It will also replace anything in the document head that has `data-router-replace` with whatever comes from the new page. This is useful for metadata.
 
 ### TS bundling
 
 Webpack is used to bundle Typescript
 
-Any TS file in `views/` will create a new bundle with that as the entrypoint, allowing page specific code to only be requested for each page. This ensures that only code required for each page is requested, rather than a giant mega bundle, and ensures new code is executed for each page on load.
+Anything imported into `app.ts` gets bundled into one bundle which should be included manually in every view.
+
+Any TS file in `views/` will create a new js bundle in dist with that as the entrypoint, allowing page specific code to only be requested for each page. This ensures that only code required for each page is requested, rather than a giant mega bundle, and ensures new code is executed for each page on load.
+
+Pages with their own js bundle should have them manually included at the end of their body (within data-router-root)
 
 ### CSS bundling
 
@@ -86,12 +101,13 @@ The contents of `dist` can now be used as a static thing
 
 # Todo
 
+- handle query and hash changes in the router without refetching the page
 - cached repository layer which wraps up requests to third party APIs
   - make really generic (i.e. a cache accessor class which has an array of document types given in the constructor, with formatted requests for CRUDs passed into constructor)
   - cache all data in json arrays by document, use results as context for page generation
   - build this for Prismic initially, but make cache accessors generic enough to be reused
   - for Prismic, this can request only documents with later updated dates than the last build - this might be possible for other backends, but should be kept optional
-- write some utils for using the repository layer at runtime - embedded json in script tag?
+- write some utils for using the repository layer at runtime - embedded json in script tag that gets passed to the templater? entire context strigified into a script tag with a js util to read it? or just fetch requests to the served json files as they're built to output?
 - allow passing helper functions into templater (https://stackoverflow.com/questions/6754919/json-stringify-function)
 - implement some kind of query language for large json files (or store them some other way - as the current implementation scales, it'll get unwieldy cus the whole file will need to be loaded into memory - could also page the json and query them one at a time, will slow things down way more but will help stop things getting too big)
 - write some nice utils for using the templater at runtime

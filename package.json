@@ -22,7 +22,7 @@
     "start-html": "npm run build-html -- --watch",
     "start-webpack": "npx webpack --watch",
     "build-webpack": "npx webpack",
-    "build-html": "npx ts-node ./build/buildHtml.ts",
+    "build-html": "npx ts-node ./build/run.ts",
     "serve": "npx browser-sync start -c ./bs-config.js",
     "build": "npm run build-webpack && npm run build-html"
   },
