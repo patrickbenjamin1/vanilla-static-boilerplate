@@ -30,8 +30,8 @@ import { createLogger } from './logger'
 export namespace Templater {
   const logger = createLogger('Templater')
 
-  /** get the frontmatter for the Template which defines the context as variables so they're accessible to the template string */
-  const getFunctionTemplateWithContext = (toExec, context) => {
+  /** parse the code to execute into a function which takes context */
+  const getFunctionTemplate = (toExec: string) => {
     return `
     return function (context) {
       Object.assign(globalThis, context)
@@ -56,7 +56,7 @@ export namespace Templater {
 
   /** evaluates a piece of javascript stored in a string with the given context object defined as variables and returns the output */
   const evaluateJsWithContext = (input: string, context: {}): string => {
-    const result = Function(getFunctionTemplateWithContext(input, context))
+    const result = Function(getFunctionTemplate(input))
     const output = result()
     return output(context)
   }
