@@ -10,7 +10,7 @@ import { createLogger } from './logger'
  * 2. a way of requesting only IDs updated later than a given date (i.e. filtering by last updated)
  *
  * The update function returned from getRepository should be run at the beginning of the node build. This first calls getPublishedIdentifiers and
- * strips out any old cached values that are no longer published. Then it calls getSinceLastUpdated to request all documents which have been updated
+ * strips out any old cached values that are no longer published. Then it calls getNew to request all documents which have been updated
  * since the last time it was run, and adds the result to the cache (replacing old documents that have since been updated)
  *
  * It returns two accessors - getOne (which gets by an id) and getAll (which gets the entire cache (to be replaced with some kind of json query
@@ -21,6 +21,8 @@ import { createLogger } from './logger'
  * the cms meaning the build step is way quicker
  *
  * caches are stored as json dictionaries keyed by an identifier
+ *
+ * BIG WARN - this will not scale well and will eventually slow down builds on big documents
  */
 
 export namespace Repository {
@@ -37,19 +39,22 @@ export namespace Repository {
 
   interface IRepository<T> {
     update: () => Promise<void>
-    getOne: (identifier: string) => Item<T>
+    getOne: (identifier?: string) => Item<T> | undefined
     getAll: () => Item<T>[]
   }
 
   interface ICreateRepositoryConfig<T> {
     /** must return an array of all items that have been updated since the date passed into it */
-    getSinceLastUpdated: (lastUpdated: string | undefined) => Promise<Item<T>[]>
+    getNew: (lastUpdated: string | undefined) => Promise<Item<T>[]>
 
     /** must return an array of all ids for this document type (i.e. using graphQuery in the Prismic API) - used to strip out old, since unpublished documents */
-    getPublishedIdentifiers: () => Promise<string[]>
+    getPublishedIdentifiers?: () => Promise<string[]>
 
     outputDirectory: string
     documentTypeName: string
+
+    /** remove old items with the result of getNew - when true, ensures the entire cache is just the result of getNew, effectively disabling caching but still useful as all data can be stored in json for the frontend - when false, ensure getPublishedIdentifiers is used */
+    clearCacheOnRefetch?: boolean
   }
 
   const getFullCacheDirectory = <T>({ outputDirectory }: Pick<ICreateRepositoryConfig<T>, 'outputDirectory'>) =>
@@ -105,34 +110,42 @@ export namespace Repository {
     return items.reduce((output, item) => ({ ...output, [item.identifier]: item }), {})
   }
 
-  const stripUnpublished = <T>(items: Record<string, Item<T>>, publishedIds: string[]) => {
+  const stripUnpublished = <T>(items: Record<string, Item<T>>, publishedIds?: string[]) => {
+    if (!publishedIds) {
+      return items
+    }
+
     return Object.keys(items).reduce((output, identifier) => {
       if (publishedIds.includes(identifier)) {
-        return { ...output, [identifier]: output[identifier as keyof typeof output] }
+        return { ...output, [identifier]: items[identifier as keyof typeof items] }
       }
       return output
     }, {})
   }
 
   const itemDictionaryToArray = <T>(items: Record<string, Item<T>>) => {
-    return Object.keys(items).reduce((output, identifier) => [...output, items[identifier]], [])
+    return Object.keys(items).reduce<Item<T>[]>((output, identifier) => [...output, items[identifier]], [] as Item<T>[])
   }
 
   export const create = <T>(config: ICreateRepositoryConfig<T>): IRepository<T> => {
     logger.info(`Creating repository for ${config.documentTypeName}...`)
 
-    /** retrive all new documents since the last updated date using the given getSinceLastUpdated function and store them in the cache */
+    /** retrive all new documents since the last updated date using the given getNew function and store them in the cache */
     const update = async () => {
+      logger.verbose(`fetching new ${config.documentTypeName}...`)
+
       const date = getLastFetchedFormattedDate()
 
       const lastCacheValue = retrieveCache<T>(config)
 
-      const publishedIds = await config.getPublishedIdentifiers()
-      const newest = await config.getSinceLastUpdated(lastCacheValue?.lastFetched)
+      const publishedIds = config.getPublishedIdentifiers && !config.clearCacheOnRefetch ? await config.getPublishedIdentifiers() : undefined
+      const newest = await config.getNew(lastCacheValue?.lastFetched)
+
+      logger.info(`fetched ${newest.length} new ${config.documentTypeName}`)
 
       const newItemsDictionary = {
-        ...(lastCacheValue?.items || {}),
-        ...stripUnpublished(itemArrayToDictionary(newest), publishedIds),
+        ...(config.clearCacheOnRefetch && newest.length ? {} : stripUnpublished(lastCacheValue?.items || {}, publishedIds)),
+        ...(itemArrayToDictionary(newest) || {}),
       }
 
       const newCacheValue: ICache<T> = {
@@ -144,10 +157,21 @@ export namespace Repository {
     }
 
     /** retrieve an item from the cache by an id */
-    const getOne = (identifier: string) => {
+    const getOne = (identifier?: string) => {
       logger.success(`Get one ${config.documentTypeName} at ${identifier}`)
 
       const cache = retrieveCache<T>(config)
+
+      if (!cache) {
+        logger.error(`${config.documentTypeName} requested but no cache found - has Repository.update been run?`)
+        return undefined
+      }
+
+      if (!identifier) {
+        const firstIdentifier = Object.keys(cache.items)[0]
+
+        return cache.items[firstIdentifier]
+      }
 
       return cache.items[identifier] || undefined
     }
@@ -157,6 +181,11 @@ export namespace Repository {
       logger.success(`Get all ${config.documentTypeName}`)
 
       const cache = retrieveCache<T>(config)
+
+      if (!cache) {
+        logger.error(`${config.documentTypeName} requested but no cache found - has Repository.update been run?`)
+        return []
+      }
 
       return itemDictionaryToArray(cache.items)
     }

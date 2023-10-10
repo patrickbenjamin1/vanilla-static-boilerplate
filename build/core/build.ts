@@ -60,6 +60,33 @@ export namespace Build {
     logger.info('built partials\n')
   }
 
+  const getOutputPath = (outputPath: string) => {
+    if (outputPath.endsWith('.html')) {
+      return outputPath
+    } else {
+      return path.resolve(outputPath, 'index.html')
+    }
+  }
+
+  const ensureDirectoryExists = (outputPath: string, { outputDirectory }: CoreConfig) => {
+    const directories = outputPath.endsWith('.html') ? outputPath.split('/').slice(0, -1) : outputPath.split('/')
+
+    // ensure directories exist if output not at root of dist
+    if (directories.length) {
+      directories.reduce((parentPath, directory) => {
+        if (directory) {
+          const fullPath = path.join(outputDirectory, parentPath, directory)
+
+          if (!fs.existsSync(fullPath)) {
+            fs.mkdirSync(fullPath)
+          }
+        }
+
+        return path.join(parentPath, directory)
+      }, '')
+    }
+  }
+
   // build a view
   const buildPage = async <T>(page: Page<T>, config: CoreConfig) => {
     // read view file to string
@@ -68,23 +95,11 @@ export namespace Build {
     // generate file
     const outputFile = await Templater.run(file.toString(), { ...(page.context || {}), ...(config.globalContext || {}) }, partials)
 
-    const directories = page.outputPath.split('/').slice(0, -1)
-
-    // ensure directories exist if output not at root of dist
-    if (directories.length) {
-      directories.reduce((parentPath, directory) => {
-        const fullPath = path.resolve(config.outputDirectory, parentPath, directory)
-
-        if (!fs.existsSync(fullPath)) {
-          fs.mkdirSync(fullPath)
-        }
-
-        return path.resolve(parentPath, directory)
-      }, '')
-    }
+    ensureDirectoryExists(page.outputPath, config)
 
     // write file
-    fs.writeFileSync(path.resolve(config.outputDirectory, page.outputPath), outputFile)
+    console.log(path.join(config.outputDirectory, getOutputPath(page.outputPath)))
+    fs.writeFileSync(path.join(config.outputDirectory, getOutputPath(page.outputPath)), outputFile)
 
     // watch if param given
     if (config.watch) {
@@ -104,7 +119,7 @@ export namespace Build {
 
   // copy public directory
   const copyPublic = (config: CoreConfig) => {
-    if (fs.existsSync(config.publicDirectory)) {
+    if (config.publicDirectory && fs.existsSync(config.publicDirectory)) {
       // copy public directory to root of output
       fs.cpSync(config.publicDirectory, config.outputDirectory, { recursive: true })
 
@@ -155,8 +170,10 @@ export namespace Build {
         buildPages(pages, { ...config, watch: false })
       })
 
-      // copy from public directory
-      chokidar.watch(config.publicDirectory).on('all', copyPublic)
+      if (config.publicDirectory) {
+        // copy from public directory
+        chokidar.watch(config.publicDirectory).on('all', copyPublic)
+      }
     }
   }
 }

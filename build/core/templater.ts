@@ -31,10 +31,14 @@ export namespace Templater {
   const logger = createLogger('Templater')
 
   /** get the frontmatter for the Template which defines the context as variables so they're accessible to the template string */
-  const getContextDefinitions = (context: {}) =>
-    Object.keys(context)
-      .map((name) => `const ${name} = ${JSON.stringify(context[name as keyof typeof context])};`)
-      .join('')
+  const getFunctionTemplateWithContext = (toExec, context) => {
+    return `
+    return function (context) {
+      Object.assign(globalThis, context)
+      return ${toExec};
+    }                                                                                                                   
+    `
+  }
 
   /** wrap html with backticks */
   const sanitiseHtmlInJs = (input: string, context: {}): string => {
@@ -52,7 +56,9 @@ export namespace Templater {
 
   /** evaluates a piece of javascript stored in a string with the given context object defined as variables and returns the output */
   const evaluateJsWithContext = (input: string, context: {}): string => {
-    return eval(getContextDefinitions(context) + input)
+    const result = Function(getFunctionTemplateWithContext(input, context))
+    const output = result()
+    return output(context)
   }
 
   /** traverses through a given string and returns an array of strings representing the contents of each root set of braces */
@@ -225,7 +231,7 @@ export namespace Templater {
   }
 
   /** remove duplicate values in an array of strings */
-  const arrayRemoveDuplicates = (array: string[]) => array.reduce((output, val) => (output.includes(val) ? output : [...output, val]), [])
+  const arrayRemoveDuplicates = (array: string[]) => array.reduce<string[]>((output, val) => (output.includes(val) ? output : [...output, val]), [])
 
   /** takes an HTML string and replaces any root level braces with evaluatable template string injections */
   const prepareHtml = (input: string, context: {}) => {
@@ -268,16 +274,22 @@ export namespace Templater {
 
   /** process HTML and evaluate all js parts and partials */
   function processHtml(input: string, context: {}, partials: { [name: string]: string }): string {
-    const preparedHtml = prepareHtml(input, context)
+    try {
+      const preparedHtml = prepareHtml(input, context)
 
-    // evaluate html content as js template string
-    let evaluatedInput = evaluateJsWithContext(`\`${preparedHtml}\``, context)
+      // evaluate html content as js template string
+      let evaluatedInput = evaluateJsWithContext(`\`${preparedHtml}\``, context)
 
-    Object.keys(partials).forEach((partial) => {
-      evaluatedInput = replacePartial(evaluatedInput, partial, partials[partial], context, partials)
-    })
+      Object.keys(partials).forEach((partial) => {
+        evaluatedInput = replacePartial(evaluatedInput, partial, partials[partial], context, partials)
+      })
 
-    return evaluatedInput
+      return evaluatedInput
+    } catch {
+      logger.error('failed to process HTML')
+
+      return ''
+    }
   }
 
   export async function run(input: string, context: {}, partials: { [name: string]: string }): Promise<string> {
@@ -285,7 +297,8 @@ export namespace Templater {
 
     const output = processHtml(input, context, partials)
 
-    const prettiedInput = await prettier.format(output, { parser: 'html' })
+    // const prettiedInput = await prettier.format(output, { parser: 'html' })
+    const prettiedInput = output
 
     logger.verbose('Complete')
 

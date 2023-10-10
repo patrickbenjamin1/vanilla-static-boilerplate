@@ -1,30 +1,36 @@
 import * as path from 'path'
-import { Paths } from './paths'
+import { BuildPaths } from './paths'
 import { Build } from './core'
-
-const stuff = [
-  { name: 'thing', slug: 'thing' },
-  { name: 'other thing', slug: 'other-thing' },
-]
+import { Paths } from '../source/paths'
+import { HomeRepository, ThingRepository } from './repositories/prismic'
+import * as prismic from '@prismicio/client'
 
 const registerPages: Build.BuildConfig['registerPages'] = async (registerPage) => {
-  registerPage({ template: path.resolve(Paths.viewsDirectory, 'index.pchtml'), context: { stuff }, outputPath: 'index.html' })
+  // fetch new data for pages
+  await Promise.all([HomeRepository.update(), ThingRepository.update()])
 
+  // retrieve data for pages from cache
+  const home = HomeRepository.getOne()
+  const things = ThingRepository.getAll()
+
+  console.log(home)
+
+  // register pages with data
   registerPage({
-    template: path.resolve(Paths.viewsDirectory, 'page2.pchtml'),
-    context: { content: 'This content was templated' },
-    outputPath: '2.html',
+    template: path.resolve(BuildPaths.viewsDirectory, 'index.pchtml'),
+    context: { content: { home, things }, prismic, Paths },
+    outputPath: Paths.index,
   })
 
-  stuff.forEach((thing) => {
+  things.map((thing) => {
     registerPage({
-      template: path.resolve(Paths.viewsDirectory, 'thing.pchtml'),
-      context: { name: thing.name },
-      outputPath: `thing/${thing.slug}.html`,
+      template: path.resolve(BuildPaths.viewsDirectory, 'thing.pchtml'),
+      context: { content: { thing }, prismic, Paths },
+      outputPath: Paths.thing({ uid: thing.uid || thing.id }),
     })
   })
 
-  registerPage({ template: path.resolve(Paths.viewsDirectory, '404.pchtml'), context: {}, outputPath: '404.html' })
+  registerPage({ template: path.resolve(BuildPaths.viewsDirectory, '404.pchtml'), context: {}, outputPath: '404.html' })
 }
 
 const build = async () => {
@@ -35,9 +41,9 @@ const build = async () => {
   await Build.run({
     watch,
     registerPages,
-    publicDirectory: Paths.publicDirectory,
-    outputDirectory: Paths.outputDirectory,
-    partialsDirectory: Paths.partialsDirectory,
+    publicDirectory: BuildPaths.publicDirectory,
+    outputDirectory: BuildPaths.outputDirectory,
+    partialsDirectory: BuildPaths.partialsDirectory,
   })
 }
 

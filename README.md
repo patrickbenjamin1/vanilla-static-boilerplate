@@ -102,11 +102,11 @@ The contents of `dist` can now be used as a static thing
 # Todo
 
 - handle query and hash changes in the router without refetching the page
+- remove deleted pages from dist file
 - cached repository layer which wraps up requests to third party APIs
-  - make really generic (i.e. a cache accessor class which has an array of document types given in the constructor, with formatted requests for CRUDs passed into constructor)
-  - cache all data in json arrays by document, use results as context for page generation
-  - build this for Prismic initially, but make cache accessors generic enough to be reused
-  - for Prismic, this can request only documents with later updated dates than the last build - this might be possible for other backends, but should be kept optional
+  - add paging for cached files
+  - i.e. if array is more than say 30, split into paged files (/cache/thing--0.json) and add index file (/cache/thing--index.json) that includes an array of arrays of ids (index in initial array corresponds to which page it's in) to speed up queries
+  - sorting for cached files
 - write some utils for using the repository layer at runtime - embedded json in script tag that gets passed to the templater? entire context strigified into a script tag with a js util to read it? or just fetch requests to the served json files as they're built to output?
 - allow passing helper functions into templater (https://stackoverflow.com/questions/6754919/json-stringify-function)
 - implement some kind of query language for large json files (or store them some other way - as the current implementation scales, it'll get unwieldy cus the whole file will need to be loaded into memory - could also page the json and query them one at a time, will slow things down way more but will help stop things getting too big)

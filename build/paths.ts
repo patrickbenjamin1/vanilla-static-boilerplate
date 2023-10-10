@@ -1,6 +1,6 @@
 import * as path from 'path'
 
-export namespace Paths {
+export namespace BuildPaths {
   // define directories
   export const rootDirectory = path.resolve(__dirname, '..')
   export const sourceDirectory = path.resolve(rootDirectory, 'source')

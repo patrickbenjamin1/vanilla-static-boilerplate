@@ -12,6 +12,8 @@
     "target": "es2021",
     "allowJs": true,
     "moduleResolution": "node",
-    "esModuleInterop": true
-  }
+    "esModuleInterop": true,
+    "lib": ["ES2021"]
+  },
+  "include": ["../source/**/*"]
 }

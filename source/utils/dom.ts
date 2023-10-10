@@ -37,4 +37,32 @@ export namespace DomUtils {
       })
     }
   }
+
+  export const setAttributeFlag = (element: Element, name: string, value: boolean) => {
+    if (value) {
+      element.setAttribute(name, '')
+    } else {
+      element.removeAttribute(name)
+    }
+  }
+
+  export const setHidden = (element: Element, hidden: boolean) => {
+    if (hidden) {
+      element.setAttribute('tabindex', '-1')
+      element.setAttribute('aria-hidden', '')
+      element.setAttribute('data-hidden', '')
+    } else {
+      element.removeAttribute('tabindex')
+      element.removeAttribute('aria-hidden')
+      element.removeAttribute('data-hidden')
+    }
+  }
+
+  export const setScrollEnabled = (enabled: boolean) => {
+    setAttributeFlag(document.documentElement, 'scroll-enabled', enabled)
+  }
+
+  export const stopPropagation = (event: Event) => {
+    event.stopPropagation()
+  }
 }

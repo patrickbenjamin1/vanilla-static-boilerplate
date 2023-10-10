@@ -8,14 +8,12 @@
     <div id="root" data-router-root>
 
       <main class="view index-view">
-        <p>I&apos;m a page</p>
-
-        <div>
-          <a href="/2">other page</a>
+        <div class="index-view-top-section">
+          {prismic.asHTML(content.home.data.content)}
         </div>
 
-        {stuff.map(thing => <div>
-          <a href="/thing/{thing.slug}">{thing.name}</a>
+        {content.things.map(thing => <div>
+          <a href="{Paths.thing(thing)}">{thing.data.name}</a>
         </div>).join('')}
         
       </main>
