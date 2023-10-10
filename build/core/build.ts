@@ -14,13 +14,13 @@ export namespace Build {
     publicDirectory?: string
     partialsDirectory: string
     outputDirectory: string
-    globalContext?: any
+    globalTemplateContext?: any
   }
 
   export type Page<T> = {
     template: string
     outputPath: string
-    context?: T
+    templateContext?: T
   }
 
   export type BuildPage = <T>(page: Page<T>) => void
@@ -93,7 +93,7 @@ export namespace Build {
     const file = fs.readFileSync(page.template)
 
     // generate file
-    const outputFile = await Templater.run(file.toString(), { ...(page.context || {}), ...(config.globalContext || {}) }, partials)
+    const outputFile = await Templater.run(file.toString(), { ...(page.templateContext || {}), ...(config.globalTemplateContext || {}) }, partials)
 
     ensureDirectoryExists(page.outputPath, config)
 
@@ -128,9 +128,11 @@ export namespace Build {
   }
 
   export const run = async (config: BuildConfig) => {
-    logger.info('on start build...')
-    // run onStartBuild hook (use for registering handlebars helpers and such)
-    await config.onStartBuild?.()
+    if (config.onStartBuild) {
+      logger.info('on start build...')
+      // run onStartBuild hook (use for registering handlebars helpers and such)
+      await config.onStartBuild?.()
+    }
 
     // create directories
     if (!fs.existsSync(config.outputDirectory)) {
@@ -138,7 +140,6 @@ export namespace Build {
       fs.mkdirSync(config.outputDirectory)
     }
 
-    // run initial builds
     registerPartials(config)
     copyPublic(config)
 

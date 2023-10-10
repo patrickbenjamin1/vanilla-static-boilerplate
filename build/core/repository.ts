@@ -38,8 +38,13 @@ export namespace Repository {
   }
 
   interface IRepository<T> {
+    /** retrive all new documents since the last updated date using the given getNew function and store them in the cache */
     update: () => Promise<void>
+
+    /** retrieve an item from the cache by an id - leave the id blank to retrieve the first item (useful for singletons) */
     getOne: (identifier?: string) => Item<T> | undefined
+
+    /** retrieve all items from the cache */
     getAll: () => Item<T>[]
   }
 
@@ -57,12 +62,15 @@ export namespace Repository {
     clearCacheOnRefetch?: boolean
   }
 
+  /** get the directory of the cache from a given output directory */
   const getFullCacheDirectory = <T>({ outputDirectory }: Pick<ICreateRepositoryConfig<T>, 'outputDirectory'>) =>
     path.resolve(outputDirectory, 'cache')
 
+  /** get the path for a cache item from the document type name */
   const getCachePath = <T>({ documentTypeName, outputDirectory }: Pick<ICreateRepositoryConfig<T>, 'documentTypeName' | 'outputDirectory'>) =>
     `${getFullCacheDirectory({ outputDirectory })}/${documentTypeName}.json`
 
+  /** ensure the cache directory is created if it doesn't already exist */
   const createCacheDirectoryIfNotExists = <T>({ outputDirectory }: Pick<ICreateRepositoryConfig<T>, 'outputDirectory'>) => {
     if (!fs.existsSync(getFullCacheDirectory({ outputDirectory }))) {
       logger.info(`Creating cache directory...`)
@@ -70,8 +78,10 @@ export namespace Repository {
     }
   }
 
+  /** convert a date to the date format used in the cached files */
   const getLastFetchedFormattedDate = () => new Date().toISOString()
 
+  /** read a json file from the cache */
   const retrieveCache = <T>({
     documentTypeName,
     outputDirectory,
@@ -93,6 +103,7 @@ export namespace Repository {
     return JSON.parse(cacheJson.toString()) as ICache<T>
   }
 
+  /** set the json file value in the cache */
   const setCache = <T>(
     newCacheValue: ICache<T>,
     { documentTypeName, outputDirectory }: Pick<ICreateRepositoryConfig<T>, 'documentTypeName' | 'outputDirectory'>
@@ -106,10 +117,12 @@ export namespace Repository {
     logger.success(`Wrote to cache for ${documentTypeName}`)
   }
 
+  /** convert an array of items to a dictionary */
   const itemArrayToDictionary = <T>(items: Item<T>[]) => {
     return items.reduce((output, item) => ({ ...output, [item.identifier]: item }), {})
   }
 
+  /** strip any unpublished IDs using an array of currently published IDs */
   const stripUnpublished = <T>(items: Record<string, Item<T>>, publishedIds?: string[]) => {
     if (!publishedIds) {
       return items
@@ -123,10 +136,12 @@ export namespace Repository {
     }, {})
   }
 
+  /** convert a dictionary of items to an array */
   const itemDictionaryToArray = <T>(items: Record<string, Item<T>>) => {
     return Object.keys(items).reduce<Item<T>[]>((output, identifier) => [...output, items[identifier]], [] as Item<T>[])
   }
 
+  /** define a new cache */
   export const create = <T>(config: ICreateRepositoryConfig<T>): IRepository<T> => {
     logger.info(`Creating repository for ${config.documentTypeName}...`)
 
@@ -156,7 +171,7 @@ export namespace Repository {
       setCache(newCacheValue, config)
     }
 
-    /** retrieve an item from the cache by an id */
+    /** retrieve an item from the cache by an id - leave the id blank to retrieve the first item (useful for singletons) */
     const getOne = (identifier?: string) => {
       logger.success(`Get one ${config.documentTypeName} at ${identifier}`)
 

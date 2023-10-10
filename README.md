@@ -31,13 +31,17 @@ In three separate terminal instances
 
 This will watch and build all html, ts, and css files, and serve them using browser sync
 
+Alternatively, you can run a combined concurrent start script, but this makes reading logs a lot harder
+
+```sh
+npm run start
+```
+
 The contents of `source/public/` is also copied over and served from the root of the server
 
 ### HTML generation
 
-HTML is bundled using a custom HTML templating system, loosely based on JSX
-
-All logic for this is in `/build` and the only bit you should need to change is in `/build/buildHtml.ts`
+All logic for building HTML is in `/build` and the only bit you should need to change is in `/build/buildHtml.ts`
 
 Here, you can register pages uses the `registerPages` hook passed into the `build` function exported from `core.js` (a file containing all the important logic for this). This takes a path to the template file, an output path that will correspond to the path its served from (i.e. `/my-thing/id/cool-url`), and some context that gets passed into templates
 
@@ -45,37 +49,23 @@ The `registerPages` hook is asyncronous, meaning data can be fetched in here fro
 
 Anything in `/source/partials/` is registered as a partial which can be used in template files
 
-#### HTML Templater
+### HTML Templater (pchtml)
 
-PCHTML files are template files using a custom (but very simple) templating system, loosely based on the syntax of JSX.
+This setup uses a simple custom HTML templating solution
 
-Under the hood, all these files are turned into JS template strings (i.e. `<p>{name}</p>` is turned into `` `<p>${name}</p>\` ``)
+see [templater.md](./docs/templater.md)
 
-Anything in braces is evaluated as javascript to the return value of that js (i.e. `<div>{things.map(thing => <p>{thing.name}</p>).join('')</div>}`)
+### Fetching data
 
-`Templater.run` supports context (which is passed into pages when using `Build.run`) which is accessed as global variables in the evaluated javascript
+Data can be fetched as usual, but there is an abstracted Repository util to be run at build time, that caches responses and passes the last fetched date back into the fetcher to allow only new data to be requested.
 
-Additionally, PCHTML supports partials. Partials are registered from any PCHTML file in the `partialsDirectory` given to the build function. These are accessed using the filename preceded by an underscore. Any attributes are passed into the partial as context.
-
-I.e. `<_header title='foobar' />` will render the file `${partialsDirectory}/header.pchtml` with the context `{ title: 'foobar' }`
-
-All logic for templating is found in `/build/template.ts`.
-
-Due to it's similarity in syntax to JSX, I recommend setting VSCode (or whatever IDE you're on) to treat pchtml files as JSX files - but there are some limitations:
-
-- JSX requires a single root html element, whereas this doesn't by design
-- attributes need to be wrapped in quotes, with braces inside - i.e. `<div className={className} />` in JSX would be `<div className="{className}" />` in PCHTML
-- arrays need to be joined as their return is evaluated as strings
+see [repository.md](./docs/repository.md)
 
 ### Router
 
-When served, the output of dist should be served statically (without the extension)
+This setup uses a simple custom client side router
 
-Once served, there is a router which takes over navigation events in the browser
-
-This requests the given HTML for a new page, and looks for a div with the attribute `data-router-root`, and replaces the current `data-router-root` with the new one. Therefore, every page needs to have `data-router-root` with anything specific to that page included
-
-It will also replace anything in the document head that has `data-router-replace` with whatever comes from the new page. This is useful for metadata.
+see [router.md]('./docs/router.md)
 
 ### TS bundling
 
