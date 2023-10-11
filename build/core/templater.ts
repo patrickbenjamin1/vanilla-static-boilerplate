@@ -66,6 +66,9 @@ export namespace Templater {
     /**
      * traverses through a string using a for loop, keeps track of a depth which steps up as the traversal encounters an opening
      * brace, and steps down when it encounters a closing brace and returns the entire thing when the depth returns to 0
+     *
+     * this ensures that, for example, the string "stuff (thing (other thing) also another thing) stuff (thing)" can return
+     * ["thing (other thing) also another thing", "thing"]
      */
 
     // is currently inside some braces
@@ -175,7 +178,7 @@ export namespace Templater {
         output[output.length - 1] += char
 
         // is the end of a tag
-        if (char === '>' && !escaped) {
+        if (char === '>' && openedTag && !escaped) {
           openedTag = false
 
           // if the tag is a closing tag, reduce depth
@@ -273,7 +276,7 @@ export namespace Templater {
   }
 
   /** process HTML and evaluate all js parts and partials */
-  function processHtml(input: string, context: {}, partials: { [name: string]: string }): string {
+  const processHtml = (input: string, context: {}, partials: { [name: string]: string }): string => {
     try {
       const preparedHtml = prepareHtml(input, context)
 
@@ -292,7 +295,7 @@ export namespace Templater {
     }
   }
 
-  export async function run(input: string, context: {}, partials: { [name: string]: string }): Promise<string> {
+  export const run = async (input: string, context: {}, partials: { [name: string]: string }): Promise<string> => {
     logger.verbose('Start')
 
     const output = processHtml(input, context, partials)

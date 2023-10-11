@@ -112,7 +112,7 @@ The contents of `dist` can now be used as a static thing
 - allow passing helper functions into templater (https://stackoverflow.com/questions/6754919/json-stringify-function)
 - implement some kind of query language for large json files (or store them some other way - as the current implementation scales, it'll get unwieldy cus the whole file will need to be loaded into memory - could also page the json and query them one at a time, will slow things down way more but will help stop things getting too big)
 - write some nice utils for using the templater at runtime
-- way more documentation for templater
+- way more documentation for templater with examples
 - switch to Vite
 - dependency tree for partial rerenders in dev
   - currently builds all page on partial changes - should keep track of which pages include which partials and only rebuild the necessary pages

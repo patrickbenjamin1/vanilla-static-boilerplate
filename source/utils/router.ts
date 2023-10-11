@@ -99,17 +99,19 @@ export namespace Router {
     }
   }
 
+  export const onClickAnchor = (event: Event, element: Element) => {
+    const href = element.getAttribute('href')
+
+    if (href && href[0] === '/') {
+      event.preventDefault()
+      navigate(href)
+    }
+  }
+
   /** initalise all router logic */
   export const init = () => {
     // override click events on anchor tags
-    DomUtils.addRootEventListener('a', 'click', (event, element) => {
-      const href = element.getAttribute('href')
-
-      if (href && href[0] === '/') {
-        event.preventDefault()
-        navigate(href)
-      }
-    })
+    DomUtils.addRootEventListener('a', 'click', onClickAnchor)
 
     // ensure popstate events trigger updates
     window.addEventListener('popstate', updateRouter)
